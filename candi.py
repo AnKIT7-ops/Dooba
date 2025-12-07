@@ -1,96 +1,65 @@
-# ------ CANDIDATE ELIMINATION ALGORITHM ------
+import numpy as np
 
-import pandas as pd
+data = [
+    ['Sunny', 'Warm', 'Normal', 'Strong', 'Warm', 'Same', 'Yes'],
+    ['Sunny', 'Warm', 'High', 'Strong', 'Warm', 'Same', 'Yes'],
+    ['Sunny', 'Warm', 'High', 'Strong', 'Cool', 'Change', 'No'],
+    ['Rain', 'Cold', 'High', 'Strong', 'Warm', 'Change', 'No'],
+    ['Sunny', 'Warm', 'High', 'Strong', 'Warm', 'Change', 'Yes'],
+]
 
-# Load your dataset
-df = pd.read_csv("data.csv")
+attributes = ['Sky', 'AirTemp', 'Humidity', 'Wind', 'Water', 'Forecast']
 
-# Assume: last column is target, others are attributes
-X = df.iloc[:, :-1].values.tolist()  # attributes as list of lists
-y = df.iloc[:, -1].values.tolist()   # labels (Yes/No)
 
-num_attrs = len(X[0])
+def more_general(h1, h2):
+    return all(x == '?' or (x != '∅' and x == y) for x, y in zip(h1, h2))
 
-# Most specific hypothesis S and most general hypothesis G
-S = [['Ø'] * num_attrs]
-G = [['?'] * num_attrs]
 
-# Get domains of each attribute from data
-domains = []
-for col in range(num_attrs):
-    domains.append(set(row[col] for row in X))
+def candidate_elimination(examples):
+    S = ['∅'] * len(attributes)
+    G = [['?'] * len(attributes)]
 
-def is_consistent(h, x):
-    for hi, xi in zip(h, x):
-        if hi != '?' and hi != xi:
-            return False
-    return True
+    for example in examples:
+        x, target = example[:-1], example[-1].lower()
 
-def more_general_or_equal(h1, h2):
-    more_general = False
-    for a, b in zip(h1, h2):
-        if a == '?' and b != '?':
-            more_general = True
-        elif a != '?' and a != b:
-            return False
-    return more_general or h1 == h2
+        # Positive Example
+        if target == 'yes':
+            # Update S
+            for i in range(len(S)):
+                if S[i] == '∅':
+                    S[i] = x[i]
+                elif S[i] != x[i]:
+                    S[i] = '?'
 
-for attrs, label in zip(X, y):
-    if label == "Yes":
-        # Remove from G those not consistent with positive example
-        G = [g for g in G if is_consistent(g, attrs)]
+            # Remove inconsistent hypotheses from G
+            G = [g for g in G if all(g[i] == '?' or g[i] == S[i] for i in range(len(S)))]
 
-        # Generalize S toward this positive example
-        s = S[0][:]
-        for i in range(num_attrs):
-            if s[i] == 'Ø':
-                s[i] = attrs[i]
-            elif s[i] != attrs[i]:
-                s[i] = '?'
-        S = [s]
+        # Negative Example
+        else:
+            G_new = []
+            for g in G:
+                # If g wrongly classifies x as positive → specialize it
+                if all(g[i] == '?' or g[i] == x[i] for i in range(len(g))):
+                    # Specialize
+                    for i in range(len(g)):
+                        if g[i] == '?':
+                            # all possible domain values for this attribute except x[i]
+                            values = set(ex[i] for ex in examples)
+                            for val in values:
+                                if val != x[i]:
+                                    g_new = g.copy()
+                                    g_new[i] = val
+                                    if not any(more_general(h, g_new) for h in G_new):
+                                        G_new.append(g_new)
+                else:
+                    G_new.append(g)
 
-        # Remove g in G that are more specific than S
-        G = [g for g in G if more_general_or_equal(g, S[0])]
+            G = G_new
 
-    else:  # Negative example ("No")
-        # Remove S that incorrectly cover this negative example
-        S = [s for s in S if not is_consistent(s, attrs)]
+    return S, G
 
-        new_G = []
-        for g in G:
-            if is_consistent(g, attrs):
-                # Specialize g
-                for i in range(num_attrs):
-                    if g[i] == '?':
-                        for val in domains[i]:
-                            if val != attrs[i]:
-                                new_h = g[:]
-                                new_h[i] = val
-                                if not S or more_general_or_equal(new_h, S[0]):
-                                    new_G.append(new_h)
-                    elif g[i] == attrs[i]:
-                        for val in domains[i]:
-                            if val != attrs[i]:
-                                new_h = g[:]
-                                new_h[i] = val
-                                if not S or more_general_or_equal(new_h, S[0]):
-                                    new_G.append(new_h)
-            else:
-                new_G.append(g)
 
-        # Remove duplicates
-        G_clean = []
-        for h in new_G:
-            if h not in G_clean:
-                G_clean.append(h)
-        G = G_clean
+S, G = candidate_elimination(data)
 
-print("Final S (most specific hypotheses):")
-for s in S:
-    print(s)
-
-print("\nFinal G (most general hypotheses):")
-for g in G:
-    print(g)
-
-print("\nVersion space is all hypotheses between S and G.")
+print("Final Specific Hypothesis:", S)
+print("Final General Hypotheses:", G)
