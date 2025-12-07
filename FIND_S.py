@@ -1,24 +1,22 @@
-# ---------- FIND-S ALGORITHM ----------
-
-import pandas as pd
-
-# Change this to your file name
-df = pd.read_csv("data.csv")
-
-# Assume: last column is target, others are attributes
-X = df.iloc[:, :-1].values  # attributes
-y = df.iloc[:, -1].values   # class label (Yes/No)
-
-# Initialize most specific hypothesis
-hypothesis = ['Ø'] * X.shape[1]   # 'Ø' means no value yet
-
-for attrs, label in zip(X, y):
-    if label == "Yes":  # Only positive examples
-        for i in range(len(attrs)):
-            if hypothesis[i] == 'Ø':
-                hypothesis[i] = attrs[i]
-            elif hypothesis[i] != attrs[i]:
-                hypothesis[i] = '?'  # generalize
-
-print("Final Find-S hypothesis:")
-print(hypothesis)
+data = [
+    ['Sunny', 'Warm', 'Normal', 'Strong', 'Warm', 'Same', 'Yes'],
+    ['Sunny', 'Warm', 'High', 'Strong', 'Warm', 'Same', 'Yes'],
+    ['Sunny', 'Warm', 'High', 'Strong', 'Cool', 'Change', 'No'],
+    ['Rain', 'Cold', 'High', 'Strong', 'Warm', 'Change', 'No'],
+    ['Sunny', 'Warm', 'High', 'Strong', 'Warm', 'Change', 'Yes'],]
+def find_s(data):
+    n_attributes = len(data[0]) - 1
+    hypothesis = ['ϕ'] * n_attributes
+    for idx, row in enumerate(data):
+        attributes, label = row[:-1], row[-1]
+        if label == 'Yes':
+            print(f"Instance {idx+1} (positive): {attributes}")
+            for i in range(n_attributes):
+                if hypothesis[i] == 'ϕ':
+                    hypothesis[i] = attributes[i]
+                elif hypothesis[i] != attributes[i]:
+                    hypothesis[i] = '?'
+            print(f"Hypothesis after instance {idx+1}: {hypothesis}\n")
+    print("Final hypothesis:", hypothesis)
+    return hypothesis
+find_s(data)
